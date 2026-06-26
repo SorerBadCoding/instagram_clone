@@ -19,9 +19,11 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["*"]
-
-
+ALLOWED_HOSTS = [
+    "instaclone.xyz",
+    "www.instaclone.xyz",
+    "instagram-clone-1-jrwu.onrender.com",
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -163,3 +165,8 @@ MESSAGE_TAGS = {
 # File upload limits (5 MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://instaclone.xyz",
+    "https://www.instaclone.xyz",
+]
