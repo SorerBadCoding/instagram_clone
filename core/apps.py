@@ -1,11 +1,16 @@
-from django.apps import AppConfig
+def ready(self):
+    import core.signals  # noqa: F401
 
+    try:
+        from django.contrib.auth import get_user_model
 
-class CoreConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "core"
-    verbose_name = "Instagram Clone Core"
+        User = get_user_model()
 
-    def ready(self):
-        # Import signal handlers so they get registered when the app starts.
-        import core.signals  # noqa: F401
+        if not User.objects.filter(username="potling").exists():
+            User.objects.create_superuser(
+                username="potling",
+                email="your@email.com",
+                password="Potling123!"
+            )
+    except Exception:
+        pass
