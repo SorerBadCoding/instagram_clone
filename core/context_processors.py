@@ -1,22 +1,24 @@
-"""
-Custom context processors made available to every template.
-"""
+"""Context values shared by the navigation and notification UI."""
 
-from .models import Notification
+from .models import Message, Notification
 
 
 def notifications_context(request):
-    """
-    Adds the current user's unread notification count and the latest
-    notifications to every template's context (used for the navbar badge
-    and dropdown).
-    """
-    if request.user.is_authenticated:
-        qs = Notification.objects.filter(recipient=request.user).select_related(
-            "sender", "sender__profile", "post"
-        )
+    if not request.user.is_authenticated:
         return {
-            "unread_notifications_count": qs.filter(is_read=False).count(),
-            "navbar_notifications": qs[:5],
+            "unread_notifications_count": 0,
+            "unread_messages_count": 0,
+            "navbar_notifications": [],
         }
-    return {"unread_notifications_count": 0, "navbar_notifications": []}
+    notifications = Notification.objects.filter(recipient=request.user).select_related(
+        "sender", "sender__profile", "post", "story", "message", "conversation"
+    )
+    unread_messages_count = Message.objects.filter(
+        conversation__participants=request.user,
+        is_read=False,
+    ).exclude(sender=request.user).count()
+    return {
+        "unread_notifications_count": notifications.filter(is_read=False).count(),
+        "unread_messages_count": unread_messages_count,
+        "navbar_notifications": notifications[:5],
+    }

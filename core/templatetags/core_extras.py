@@ -1,6 +1,4 @@
-"""
-Custom template tags and filters for the Instagram Clone.
-"""
+"""Custom template tags and filters for the Instagram clone."""
 
 from django import template
 from django.db.models import QuerySet
@@ -12,7 +10,6 @@ register = template.Library()
 
 @register.simple_tag
 def is_following(user, target_user):
-    """Return True if `user` follows `target_user`."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if not target_user or user.pk == getattr(target_user, "pk", None):
@@ -22,10 +19,16 @@ def is_following(user, target_user):
 
 @register.simple_tag
 def has_liked(post, user):
-    """Return True if `user` has liked `post`."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
+    if hasattr(post, "user_has_liked"):
+        return post.user_has_liked
     return Like.objects.filter(post=post, user=user).exists()
+
+
+@register.simple_tag
+def other_participant(conversation, user):
+    return conversation.get_other_participant(user)
 
 
 @register.filter

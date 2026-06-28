@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}New message - InstaClone{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card form-card shadow-sm">
+                <div class="card-header bg-transparent d-flex align-items-center justify-content-between">
+                    <a href="{% url 'inbox' %}" class="text-reset"><i class="fa-solid fa-arrow-left"></i></a>
+                    <span class="fw-semibold">New message</span>
+                    <span></span>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="mb-4">
+                        {% csrf_token %}
+                        <label class="form-label fw-semibold">To</label>
+                        {{ form.username }}
+                        {% for error in form.username.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary w-100 ig-btn mt-3">Start chat</button>
+                    </form>
+
+                    <h6 class="mb-3">Suggested</h6>
+                    <div class="list-group">
+                        {% for person in suggested_users %}
+                        <form method="post" class="list-group-item d-flex align-items-center justify-content-between">
+                            {% csrf_token %}
+                            <input type="hidden" name="username" value="{{ person.username }}">
+                            <div class="d-flex align-items-center">
+                                <img src="{{ person.profile.avatar_url }}" class="post-avatar" alt="{{ person.username }}">
+                                <span class="fw-semibold ms-2">{{ person.username }}</span>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary ig-btn">Message</button>
+                        </form>
+                        {% empty %}
+                        <p class="text-muted mb-0">No suggested users yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -27,8 +27,15 @@
                  data-caption="{{ story.caption|default:'' }}"
                  data-delete-url="{% url 'story_delete' pk=story.pk %}"
                  data-time="{{ story.created_at|timesince }} ago">
+                {% if story.video %}
+                <video src="{{ story.video.url }}" controls autoplay muted playsinline></video>
+                {% else %}
                 <img src="{{ story.image.url }}" alt="Story by {{ story_user.username }}">
+                {% endif %}
                 {% if story.caption %}<div class="story-caption">{{ story.caption }}</div>{% endif %}
+                {% if story_user == request.user %}
+                <div class="story-caption" style="bottom: 56px;"><i class="fa-regular fa-eye"></i> {{ story.views_count }} views</div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

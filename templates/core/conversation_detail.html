@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Chat with {{ other_user.username }} - InstaClone{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card post-detail-card"
+                 data-conversation-id="{{ conversation.pk }}"
+                 data-current-user="{{ request.user.username }}">
+                <div class="card-header bg-transparent d-flex align-items-center justify-content-between">
+                    <a href="{% url 'inbox' %}" class="text-reset"><i class="fa-solid fa-arrow-left"></i></a>
+                    <a href="{% url 'profile_detail' username=other_user.username %}" class="d-flex align-items-center text-reset text-decoration-none">
+                        <img src="{{ other_user.profile.avatar_url }}" class="post-avatar" alt="{{ other_user.username }}">
+                        <div class="ms-2">
+                            <div class="fw-semibold">{{ other_user.username }}</div>
+                            {% if other_user.status.is_online %}
+                            <div class="text-success small">Online</div>
+                            {% else %}
+                            <div class="text-muted small">Last seen {{ other_user.status.last_seen|timesince }} ago</div>
+                            {% endif %}
+                        </div>
+                    </a>
+                    <span></span>
+                </div>
+
+                <div id="messagesList" class="comments-scroll p-3" style="height: 58vh;">
+                    {% for message in chat_messages %}
+                    <div class="d-flex mb-3 {% if message.sender == request.user %}justify-content-end{% endif %}" data-message-id="{{ message.pk }}">
+                        {% if message.sender != request.user %}
+                        <img src="{{ message.sender.profile.avatar_url }}" class="post-avatar" alt="{{ message.sender.username }}">
+                        {% endif %}
+                        <div class="{% if message.sender == request.user %}text-end{% else %}ms-2{% endif %}">
+                            <div class="px-3 py-2 rounded {% if message.sender == request.user %}bg-primary text-white{% else %}bg-body-tertiary{% endif %}">
+                                {% if message.image %}
+                                <img src="{{ message.image.url }}" class="img-fluid rounded mb-2" style="max-width: 240px;" alt="Message image">
+                                {% endif %}
+                                {% if message.content %}<div>{{ message.content }}</div>{% endif %}
+                            </div>
+                            <div class="text-muted small mt-1">
+                                {{ message.timestamp|timesince }} ago
+                                {% if message.sender == request.user and message.is_read %} · Seen{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center mt-4">Say hello.</p>
+                    {% endfor %}
+                    <div id="typingIndicator" class="text-muted small" style="display:none;">{{ other_user.username }} is typing...</div>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" class="card-footer bg-transparent d-flex align-items-center gap-2" id="messageForm">
+                    {% csrf_token %}
+                    {{ message_form.content }}
+                    {{ message_form.image }}
+                    <button type="submit" class="btn btn-link fw-semibold ig-link-btn">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

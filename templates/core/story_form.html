@@ -16,9 +16,21 @@
                             {% for error in form.image.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                         </div>
                         <div class="mb-3">
+                            <label class="form-label fw-semibold">Video</label>
+                            {{ form.video }}
+                            {% for error in form.video.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-semibold">Caption</label>
                             {{ form.caption }}
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Privacy</label>
+                            {{ form.privacy }}
+                        </div>
+                        {% if form.non_field_errors %}
+                        <div class="text-danger small mb-2">{{ form.non_field_errors }}</div>
+                        {% endif %}
                         <button type="submit" class="btn btn-primary w-100 ig-btn">Share to story</button>
                     </form>
                 </div>

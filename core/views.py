@@ -1,12 +1,4 @@
-"""
-Views for the Instagram Clone.
-
-Class-Based Views are used wherever the work maps cleanly onto Django's
-generic views (list/detail/create/update/delete). Lightweight, single
-purpose actions (like-toggle, follow-toggle, mark-as-read, AJAX search
-suggestions) are implemented as small function-based views guarded by
-@login_required, which keeps them simple and readable.
-"""
+"""Views for the Instagram clone."""
 
 from django.conf import settings
 from django.contrib import messages
@@ -15,30 +7,48 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView, LogoutView
-from django.db.models import Q, Count, Exists, OuterRef
+from django.core.paginator import Paginator
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
-from django.views.generic import (
-    CreateView,
-    DeleteView,
-    DetailView,
-    ListView,
-    TemplateView,
-    UpdateView,
-    View,
+from django.utils import timezone
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
+
+try:
+    from django_ratelimit.decorators import ratelimit
+except Exception:  # pragma: no cover - keeps local dev usable if dependency is absent
+    def ratelimit(*args, **kwargs):
+        def decorator(fn):
+            return fn
+        return decorator
+
+from .forms import (
+    CommentForm,
+    LoginForm,
+    MessageForm,
+    NewConversationForm,
+    PostForm,
+    ProfileForm,
+    StoryForm,
+    UserRegisterForm,
+)
+from .models import (
+    Comment,
+    Conversation,
+    Follow,
+    Like,
+    Message,
+    Notification,
+    Post,
+    Profile,
+    RecentSearch,
+    Story,
+    StoryView,
 )
 
-from .forms import CommentForm, LoginForm, PostForm, ProfileForm, StoryForm, UserRegisterForm
-from .models import Comment, Follow, Like, Notification, Post, Profile, Story
 
-
-# ---------------------------------------------------------------------------
-# Authentication
-# ---------------------------------------------------------------------------
 class RegisterView(CreateView):
-    """User registration. A Profile is auto-created via signals."""
-
     model = User
     form_class = UserRegisterForm
     template_name = "registration/register.html"
@@ -73,31 +83,18 @@ class CustomLoginView(LoginView):
 class CustomLogoutView(LogoutView):
     next_page = reverse_lazy("login")
 
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            messages.info(request, "You have been logged out.")
-        return super().dispatch(request, *args, **kwargs)
 
-
-# ---------------------------------------------------------------------------
-# Feed / Explore
-# ---------------------------------------------------------------------------
 class FeedView(LoginRequiredMixin, ListView):
-    """Home feed: posts from people the current user follows, plus their own."""
-
     model = Post
     template_name = "core/feed.html"
     context_object_name = "posts"
     paginate_by = getattr(settings, "FEED_PER_PAGE", 6)
 
     def get_queryset(self):
-        following_ids = Follow.objects.filter(follower=self.request.user).values_list(
-            "following_id", flat=True
-        )
-        user_filter = Q(user_id__in=following_ids) | Q(user=self.request.user)
+        following_ids = Follow.objects.filter(follower=self.request.user).values_list("following_id", flat=True)
         liked_subquery = Like.objects.filter(post=OuterRef("pk"), user=self.request.user)
         return (
-            Post.objects.filter(user_filter)
+            Post.objects.filter(Q(user_id__in=following_ids) | Q(user=self.request.user))
             .select_related("user", "user__profile")
             .prefetch_related("comments__user", "comments__user__profile", "likes")
             .annotate(
@@ -110,39 +107,30 @@ class FeedView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        following_ids = list(
-            Follow.objects.filter(follower=self.request.user).values_list(
-                "following_id", flat=True
-            )
-        )
+        following_ids = list(Follow.objects.filter(follower=self.request.user).values_list("following_id", flat=True))
         story_user_ids = following_ids + [self.request.user.id]
-        stories_qs = (
+        stories = (
             Story.objects.active()
             .filter(user_id__in=story_user_ids)
             .select_related("user", "user__profile")
+            .prefetch_related("views")
             .order_by("user_id", "-created_at")
         )
-        # Group active stories by user, preserving "my story" first.
         grouped = {}
-        for story in stories_qs:
+        for story in stories:
             grouped.setdefault(story.user_id, []).append(story)
-        ordered_user_ids = [self.request.user.id] + [
-            uid for uid in following_ids if uid in grouped
-        ]
-        story_groups = [
+        ordered_user_ids = [self.request.user.id] + [uid for uid in following_ids if uid in grouped]
+        context["story_groups"] = [
             {"user": grouped[uid][0].user, "stories": grouped[uid]}
             for uid in ordered_user_ids
             if uid in grouped
         ]
-        context["story_groups"] = story_groups
         context["comment_form"] = CommentForm()
         context["is_feed_empty"] = not context["posts"]
         return context
 
 
 class ExploreView(LoginRequiredMixin, ListView):
-    """Discover posts from everyone, not just people the user follows."""
-
     model = Post
     template_name = "core/explore.html"
     context_object_name = "posts"
@@ -153,7 +141,7 @@ class ExploreView(LoginRequiredMixin, ListView):
         return (
             Post.objects.exclude(user=self.request.user)
             .select_related("user", "user__profile")
-            .prefetch_related("comments")
+            .prefetch_related("comments", "likes")
             .annotate(
                 liked_count=Count("likes", distinct=True),
                 comment_count=Count("comments", distinct=True),
@@ -163,9 +151,6 @@ class ExploreView(LoginRequiredMixin, ListView):
         )
 
 
-# ---------------------------------------------------------------------------
-# Posts
-# ---------------------------------------------------------------------------
 class PostDetailView(LoginRequiredMixin, DetailView):
     model = Post
     template_name = "core/post_detail.html"
@@ -179,9 +164,7 @@ class PostDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["comment_form"] = CommentForm()
-        context["comments"] = self.object.comments.select_related(
-            "user", "user__profile"
-        ).order_by("created_at")
+        context["comments"] = self.object.comments.select_related("user", "user__profile")
         return context
 
 
@@ -211,10 +194,6 @@ class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         messages.error(self.request, "You can only edit your own posts.")
         return redirect("feed")
 
-    def form_valid(self, form):
-        messages.success(self.request, "Your post was updated.")
-        return super().form_valid(form)
-
     def get_success_url(self):
         return reverse("post_detail", kwargs={"pk": self.object.pk})
 
@@ -231,24 +210,14 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         messages.error(self.request, "You can only delete your own posts.")
         return redirect("feed")
 
-    def form_valid(self, form):
-        messages.success(self.request, "Your post was deleted.")
-        return super().form_valid(form)
 
-
-# ---------------------------------------------------------------------------
-# Profiles
-# ---------------------------------------------------------------------------
 class ProfileDetailView(LoginRequiredMixin, DetailView):
     model = Profile
     template_name = "core/profile_detail.html"
     context_object_name = "profile"
-    slug_field = "user__username"
-    slug_url_kwarg = "username"
 
     def get_object(self, queryset=None):
-        username = self.kwargs.get("username")
-        user = get_object_or_404(User, username=username)
+        user = get_object_or_404(User, username=self.kwargs.get("username"))
         profile, _ = Profile.objects.select_related("user").get_or_create(user=user)
         return profile
 
@@ -257,24 +226,23 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
         profile_user = self.object.user
         posts = (
             Post.objects.filter(user=profile_user)
-            .select_related("user")
             .prefetch_related("likes", "comments")
-            .annotate(liked_count=Count("likes", distinct=True))
+            .annotate(liked_count=Count("likes", distinct=True), comment_count=Count("comments", distinct=True))
             .order_by("-created_at")
         )
-        paginator_page = self.request.GET.get("page")
-        from django.core.paginator import Paginator
-
-        paginator = Paginator(posts, getattr(settings, "POSTS_PER_PAGE", 9))
-        context["posts"] = paginator.get_page(paginator_page)
+        context["posts"] = Paginator(posts, getattr(settings, "POSTS_PER_PAGE", 9)).get_page(self.request.GET.get("page"))
         context["is_own_profile"] = profile_user == self.request.user
         context["is_following"] = (
             not context["is_own_profile"]
-            and Follow.objects.filter(
-                follower=self.request.user, following=profile_user
-            ).exists()
+            and Follow.objects.filter(follower=self.request.user, following=profile_user).exists()
         )
         context["active_stories"] = Story.objects.active().filter(user=profile_user)
+        context["mutual_followers"] = User.objects.filter(
+            followers__follower=self.request.user,
+            following__following=profile_user,
+        ).select_related("profile")[:3]
+        status = getattr(profile_user, "status", None)
+        context["is_online"] = bool(status and status.is_online and profile_user.profile.show_activity_status)
         return context
 
 
@@ -282,23 +250,15 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = Profile
     form_class = ProfileForm
     template_name = "core/profile_form.html"
-    success_url = reverse_lazy("feed")
 
     def get_object(self, queryset=None):
         profile, _ = Profile.objects.get_or_create(user=self.request.user)
         return profile
 
-    def form_valid(self, form):
-        messages.success(self.request, "Your profile was updated.")
-        return super().form_valid(form)
-
     def get_success_url(self):
         return reverse("profile_detail", kwargs={"username": self.request.user.username})
 
 
-# ---------------------------------------------------------------------------
-# Notifications
-# ---------------------------------------------------------------------------
 class NotificationListView(LoginRequiredMixin, ListView):
     model = Notification
     template_name = "core/notifications.html"
@@ -307,53 +267,63 @@ class NotificationListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return Notification.objects.filter(recipient=self.request.user).select_related(
-            "sender", "sender__profile", "post"
+            "sender", "sender__profile", "post", "story", "message", "conversation"
         )
 
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
-        # Mark all unread notifications as read once the page is viewed.
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return response
 
 
-# ---------------------------------------------------------------------------
-# Search
-# ---------------------------------------------------------------------------
 class SearchView(LoginRequiredMixin, ListView):
-    """Search users by username or profile bio."""
-
     model = Profile
     template_name = "core/search.html"
     context_object_name = "profiles"
     paginate_by = 12
 
     def get_queryset(self):
-        query = self.request.GET.get("q", "").strip()
-        self.query = query
-        if not query:
+        self.query = self.request.GET.get("q", "").strip()
+        if not self.query:
             return Profile.objects.none()
         return (
             Profile.objects.select_related("user")
-            .filter(Q(user__username__icontains=query) | Q(bio__icontains=query))
+            .filter(
+                Q(user__username__icontains=self.query)
+                | Q(user__first_name__icontains=self.query)
+                | Q(user__last_name__icontains=self.query)
+                | Q(bio__icontains=self.query)
+            )
             .order_by("user__username")
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["query"] = getattr(self, "query", "")
+        context["query"] = self.query
+        if self.query:
+            for profile in context["profiles"][:5]:
+                if profile.user != self.request.user:
+                    RecentSearch.objects.update_or_create(user=self.request.user, searched_user=profile.user)
+        context["recent_searches"] = RecentSearch.objects.filter(user=self.request.user).select_related(
+            "searched_user", "searched_user__profile"
+        )[:8]
+        context["suggested_users"] = Profile.objects.exclude(user=self.request.user).select_related("user")[:8]
         return context
 
 
 @login_required
 def search_suggestions(request):
-    """AJAX endpoint returning lightweight username/bio search suggestions."""
     query = request.GET.get("q", "").strip()
     results = []
-    if query:
+    if query and request.user.is_authenticated:
         profiles = (
             Profile.objects.select_related("user")
-            .filter(Q(user__username__icontains=query) | Q(bio__icontains=query))
+            .filter(
+                Q(user__username__icontains=query)
+                | Q(user__first_name__icontains=query)
+                | Q(user__last_name__icontains=query)
+                | Q(bio__icontains=query)
+            )
             .order_by("user__username")[:8]
         )
         for profile in profiles:
@@ -362,15 +332,12 @@ def search_suggestions(request):
                     "username": profile.user.username,
                     "bio": profile.bio[:60],
                     "url": reverse("profile_detail", kwargs={"username": profile.user.username}),
-                    "avatar": profile.profile_picture.url if profile.profile_picture else "",
+                    "avatar": profile.avatar_url,
                 }
             )
     return JsonResponse({"results": results})
 
 
-# ---------------------------------------------------------------------------
-# Stories
-# ---------------------------------------------------------------------------
 class StoryCreateView(LoginRequiredMixin, CreateView):
     model = Story
     form_class = StoryForm
@@ -386,19 +353,20 @@ class StoryCreateView(LoginRequiredMixin, CreateView):
 
 
 class StoryViewerView(LoginRequiredMixin, TemplateView):
-    """Slideshow-style viewer for one user's currently-active stories."""
-
     template_name = "core/story_viewer.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        username = self.kwargs.get("username")
-        story_user = get_object_or_404(User, username=username)
+        story_user = get_object_or_404(User.objects.select_related("profile"), username=self.kwargs.get("username"))
         stories = (
-            Story.objects.active().filter(user=story_user).select_related("user", "user__profile")
+            Story.objects.active()
+            .filter(user=story_user)
+            .select_related("user", "user__profile")
+            .prefetch_related("views__viewer")
         )
-        if not stories.exists():
-            messages.info(self.request, f"{story_user.username} has no active stories right now.")
+        for story in stories:
+            if story.user_id != self.request.user.id:
+                StoryView.objects.get_or_create(story=story, viewer=self.request.user)
         context["story_user"] = story_user
         context["stories"] = stories
         return context
@@ -416,12 +384,9 @@ def story_delete(request, pk):
     return redirect("feed")
 
 
-# ---------------------------------------------------------------------------
-# Likes / Follows / Comments (lightweight action endpoints)
-# ---------------------------------------------------------------------------
+@ratelimit(key="user_or_ip", rate="60/m", method="POST", block=True)
 @login_required
 def like_toggle(request, pk):
-    """Like a post if not already liked, otherwise unlike it. Prevents duplicates."""
     post = get_object_or_404(Post, pk=pk)
     like, created = Like.objects.get_or_create(user=request.user, post=post)
     if not created:
@@ -429,14 +394,12 @@ def like_toggle(request, pk):
         liked = False
     else:
         liked = True
-
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"liked": liked, "likes_count": post.likes.count()})
-
-    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("feed")
-    return redirect(next_url)
+    return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("feed"))
 
 
+@ratelimit(key="user_or_ip", rate="30/m", method="POST", block=True)
 @login_required
 def comment_add(request, pk):
     post = get_object_or_404(Post, pk=pk)
@@ -465,57 +428,124 @@ def comment_delete(request, pk):
     return redirect("post_detail", pk=post_pk)
 
 
+@ratelimit(key="user_or_ip", rate="30/m", method="POST", block=True)
 @login_required
 def follow_toggle(request, username):
-    """Follow/unfollow a user. Prevents duplicate follows and self-follows."""
     target_user = get_object_or_404(User, username=username)
     if target_user.id == request.user.id:
         messages.error(request, "You cannot follow yourself.")
         return redirect("profile_detail", username=username)
-
-    follow, created = Follow.objects.get_or_create(
-        follower=request.user, following=target_user
-    )
+    follow, created = Follow.objects.get_or_create(follower=request.user, following=target_user)
     if not created:
         follow.delete()
         messages.info(request, f"Unfollowed {target_user.username}.")
     else:
         messages.success(request, f"You are now following {target_user.username}.")
-
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse(
-            {
-                "following": created,
-                "followers_count": target_user.followers.count(),
-            }
-        )
-    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse(
-        "profile_detail", kwargs={"username": username}
-    )
-    return redirect(next_url)
+        return JsonResponse({"following": created, "followers_count": target_user.followers.count()})
+    return redirect(request.POST.get("next") or reverse("profile_detail", kwargs={"username": username}))
 
 
 class FollowListView(LoginRequiredMixin, TemplateView):
-    """Shows a user's followers or following list depending on `mode`."""
-
     template_name = "core/follow_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        username = self.kwargs.get("username")
+        profile_user = get_object_or_404(User, username=self.kwargs.get("username"))
         mode = self.kwargs.get("mode")
-        profile_user = get_object_or_404(User, username=username)
         if mode == "followers":
-            relations = Follow.objects.filter(following=profile_user).select_related(
-                "follower", "follower__profile"
-            )
-            people = [r.follower for r in relations]
+            people = User.objects.filter(following__following=profile_user).select_related("profile")
         else:
-            relations = Follow.objects.filter(follower=profile_user).select_related(
-                "following", "following__profile"
-            )
-            people = [r.following for r in relations]
-        context["profile_user"] = profile_user
-        context["people"] = people
-        context["mode"] = mode
+            people = User.objects.filter(followers__follower=profile_user).select_related("profile")
+        context.update({"profile_user": profile_user, "people": people, "mode": mode})
         return context
+
+
+class InboxView(LoginRequiredMixin, ListView):
+    model = Conversation
+    template_name = "core/inbox.html"
+    context_object_name = "conversations"
+
+    def get_queryset(self):
+        return (
+            Conversation.objects.filter(participants=self.request.user)
+            .prefetch_related(
+                "participants__profile",
+                Prefetch("messages", queryset=Message.objects.select_related("sender").order_by("-timestamp")),
+            )
+            .order_by("-updated_at")
+        )
+
+
+class ConversationDetailView(LoginRequiredMixin, DetailView):
+    model = Conversation
+    template_name = "core/conversation_detail.html"
+    context_object_name = "conversation"
+
+    def get_queryset(self):
+        return Conversation.objects.filter(participants=self.request.user).prefetch_related("participants__profile")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        messages_qs = self.object.messages.select_related("sender", "sender__profile").order_by("-timestamp")[:50]
+        Message.objects.filter(conversation=self.object, is_read=False).exclude(sender=self.request.user).update(
+            is_read=True,
+            read_at=timezone.now(),
+        )
+        context["chat_messages"] = reversed(list(messages_qs))
+        context["message_form"] = MessageForm()
+        context["other_user"] = self.object.get_other_participant(self.request.user)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = MessageForm(request.POST, request.FILES)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.sender = request.user
+            message.conversation = self.object
+            message.save()
+            Conversation.objects.filter(pk=self.object.pk).update(updated_at=timezone.now())
+        return redirect("conversation_detail", pk=self.object.pk)
+
+
+class NewConversationView(LoginRequiredMixin, TemplateView):
+    template_name = "core/new_message.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form"] = NewConversationForm()
+        context["suggested_users"] = User.objects.exclude(pk=self.request.user.pk).select_related("profile")[:10]
+        return context
+
+    def post(self, request, *args, **kwargs):
+        form = NewConversationForm(request.POST)
+        if form.is_valid():
+            target_user = form.cleaned_data["username"]
+            if target_user == request.user:
+                messages.error(request, "Choose someone else to message.")
+                return redirect("new_message")
+            conversation = Conversation.between(request.user, target_user)
+            return redirect("conversation_detail", pk=conversation.pk)
+        return render(request, self.template_name, {"form": form, "suggested_users": User.objects.none()})
+
+
+@login_required
+def older_messages(request, pk):
+    conversation = get_object_or_404(Conversation, pk=pk, participants=request.user)
+    before_id = request.GET.get("before")
+    qs = conversation.messages.select_related("sender").order_by("-timestamp")
+    if before_id:
+        qs = qs.filter(pk__lt=before_id)
+    data = [
+        {
+            "id": message.pk,
+            "sender": message.sender.username,
+            "content": message.content,
+            "image": message.image.url if message.image else "",
+            "timestamp": message.timestamp.isoformat(),
+            "is_read": message.is_read,
+        }
+        for message in qs[:30]
+    ]
+    return JsonResponse({"messages": data})

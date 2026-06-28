@@ -9,6 +9,9 @@
                 <div class="flex-grow-1 w-100">
                     <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
                         <h4 class="mb-0">{{ profile.user.username }}</h4>
+                        {% if is_online %}
+                            <span class="badge rounded-pill bg-success">Online</span>
+                        {% endif %}
                         {% if is_own_profile %}
                             <a href="{% url 'profile_edit' %}" class="btn btn-outline-secondary btn-sm">Edit profile</a>
                         {% else %}
@@ -32,6 +35,14 @@
                     {% if profile.bio %}<div class="profile-bio">{{ profile.bio|linebreaksbr }}</div>{% endif %}
                     {% if profile.website %}<a href="{{ profile.website }}" target="_blank" rel="noopener noreferrer" class="profile-link"><i class="fa-solid fa-link"></i> {{ profile.website }}</a>{% endif %}
                     {% if profile.location %}<div class="text-muted small mt-1"><i class="fa-solid fa-location-dot"></i> {{ profile.location }}</div>{% endif %}
+                    {% if mutual_followers %}
+                    <div class="text-muted small mt-2">
+                        Followed by
+                        {% for person in mutual_followers %}
+                            <a href="{% url 'profile_detail' username=person.username %}" class="text-reset fw-semibold">{{ person.username }}</a>{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

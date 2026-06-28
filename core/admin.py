@@ -6,7 +6,20 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DefaultUserAdmin
 from django.contrib.auth.models import User
 
-from .models import Comment, Follow, Like, Notification, Post, Profile, Story
+from .models import (
+    Comment,
+    Conversation,
+    Follow,
+    Like,
+    Message,
+    Notification,
+    Post,
+    Profile,
+    RecentSearch,
+    Story,
+    StoryView,
+    UserStatus,
+)
 
 
 class ProfileInline(admin.StackedInline):
@@ -40,8 +53,8 @@ admin.site.register(User, UserAdmin)
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "location", "followers_count", "following_count", "posts_count", "created_at")
-    search_fields = ("user__username", "user__email", "bio", "location")
+    list_display = ("user", "location", "google_id", "followers_count", "following_count", "posts_count", "created_at")
+    search_fields = ("user__username", "user__email", "bio", "location", "google_id")
     list_filter = ("created_at",)
     readonly_fields = ("created_at", "updated_at")
 
@@ -90,9 +103,9 @@ class FollowAdmin(admin.ModelAdmin):
 
 @admin.register(Story)
 class StoryAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "created_at", "expires_at", "is_active_display")
+    list_display = ("id", "user", "privacy", "views_count", "created_at", "expires_at", "is_active_display")
     search_fields = ("user__username", "caption")
-    list_filter = ("created_at",)
+    list_filter = ("privacy", "created_at")
     autocomplete_fields = ["user"]
 
     @admin.display(description="Active?", boolean=True)
@@ -105,7 +118,53 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ("id", "recipient", "sender", "notification_type", "is_read", "created_at")
     search_fields = ("recipient__username", "sender__username")
     list_filter = ("notification_type", "is_read", "created_at")
-    autocomplete_fields = ["recipient", "sender", "post"]
+    autocomplete_fields = ["recipient", "sender", "post", "story", "message", "conversation"]
+
+
+@admin.register(StoryView)
+class StoryViewAdmin(admin.ModelAdmin):
+    list_display = ("story", "viewer", "viewed_at")
+    search_fields = ("story__user__username", "viewer__username")
+    autocomplete_fields = ["story", "viewer"]
+
+
+class MessageInline(admin.TabularInline):
+    model = Message
+    extra = 0
+    readonly_fields = ("timestamp", "read_at")
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ("id", "created_at", "updated_at")
+    search_fields = ("participants__username", "participants__email")
+    filter_horizontal = ("participants",)
+    inlines = [MessageInline]
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ("id", "conversation", "sender", "short_content", "is_read", "timestamp")
+    search_fields = ("sender__username", "content")
+    list_filter = ("is_read", "timestamp")
+    autocomplete_fields = ["conversation", "sender"]
+
+    @admin.display(description="Content")
+    def short_content(self, obj):
+        return (obj.content[:50] + "...") if len(obj.content) > 50 else obj.content
+
+
+@admin.register(UserStatus)
+class UserStatusAdmin(admin.ModelAdmin):
+    list_display = ("user", "is_online", "last_seen")
+    search_fields = ("user__username",)
+    list_filter = ("is_online",)
+
+
+@admin.register(RecentSearch)
+class RecentSearchAdmin(admin.ModelAdmin):
+    list_display = ("user", "searched_user", "created_at")
+    search_fields = ("user__username", "searched_user__username")
 
 
 admin.site.site_header = "InstaClone Administration"

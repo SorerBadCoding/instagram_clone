@@ -44,6 +44,14 @@
                             <label class="form-label fw-semibold">Location</label>
                             {{ form.location }}
                         </div>
+                        <div class="form-check mb-2">
+                            {{ form.show_activity_status }}
+                            <label class="form-check-label">Show activity status</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            {{ form.allow_story_replies }}
+                            <label class="form-check-label">Allow story replies</label>
+                        </div>
                         <button type="submit" class="btn btn-primary w-100 ig-btn">Save changes</button>
                     </form>
                 </div>

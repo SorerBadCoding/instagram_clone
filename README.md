@@ -1,132 +1,129 @@
-# InstaClone — Instagram Clone (Django)
+﻿# InstaClone - Production Django Social App
 
-A full-featured Instagram-style social media application built with Django,
-created as a university software engineering / web development project.
+A Django Instagram-style social platform with the existing Bootstrap UI preserved and a restored production-ready backend.
 
 ## Features
 
-- **Authentication** — registration, login, logout (Django auth + signals auto-create a `Profile` for every new `User`)
-- **Posts** — create, edit, delete (owner-only), captions, locations
-- **Feed** — posts from people you follow + your own, paginated
-- **Explore** — grid of all posts from everyone, paginated
-- **Likes** — AJAX like/unlike, duplicate likes prevented at the database level
-- **Comments** — add/delete comments on posts
-- **Follow system** — follow/unfollow, duplicate follows prevented at the database level, followers/following lists
-- **Stories** — 24-hour expiring photo stories with a slideshow viewer; expired stories are hidden automatically
-- **Notifications** — follow / like / comment notifications with an unread badge
-- **Search** — search users by username or bio, with live AJAX suggestions
-- **Profiles** — bio, profile picture, website, location, post/follower/following counts
-- **Dark mode** toggle
-- **Mobile responsive**, Instagram-style sidebar + bottom navigation
-- **Admin panel** — custom configuration with search, filters, and inline profile editing
+- Django auth plus Google OAuth2 with django-allauth
+- Automatic profile/status creation for every user
+- Posts, likes, comments, follows, profile stats, followers/following lists
+- 24-hour image/video stories with privacy, viewer tracking, and owner analytics
+- Real-time notifications for follows, likes, comments, messages, and story views
+- Direct messages with one-to-one conversations, WebSockets, typing indicators, read receipts, image upload fallback, timestamps, and older-message endpoint
+- User search by username, name, and bio with AJAX suggestions, recent searches, and suggested users
+- Online/offline presence through Django Channels
+- SQLite locally, PostgreSQL through DATABASE_URL in production
+- Daphne ASGI, WhiteNoise static files, secure production settings, and deployment-ready environment variables
 
-## Tech Stack
+## Local Setup
 
-- Python 3 / Django 6
-- SQLite (default — zero config)
-- Bootstrap 5 + Font Awesome (via CDN)
-- Pillow (image handling)
-
-## Project Structure
-
-```
-instagram_clone/
-├── manage.py
-├── requirements.txt
-├── config/                 # Project settings, root urls, wsgi/asgi
-│   ├── settings.py
-│   ├── urls.py
-│   ├── wsgi.py
-│   └── asgi.py
-├── core/                    # Main application
-│   ├── models.py            # Profile, Post, Comment, Like, Follow, Story, Notification
-│   ├── views.py              # Class-based + function-based views
-│   ├── forms.py
-│   ├── urls.py
-│   ├── admin.py
-│   ├── signals.py            # auto-create Profile, auto-create notifications
-│   ├── context_processors.py
-│   ├── templatetags/
-│   │   └── core_extras.py
-│   └── migrations/
-├── templates/
-│   ├── base.html
-│   ├── registration/        # login.html, register.html
-│   └── core/                # feed, explore, post, profile, search, stories, notifications...
-├── static/
-│   ├── css/style.css
-│   └── js/script.js
-└── media/                   # uploaded images (profile pics, posts, stories)
-    └── defaults/             # default avatar / post placeholder images
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
 ```
 
-## Setup Instructions
+Open http://127.0.0.1:8000/.
 
-1. **Create and activate a virtual environment (recommended)**
+The existing migration seeds a local superuser:
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate        # Windows: venv\Scripts\activate
-   ```
+```text
+username: potling
+password: Potling123!
+```
 
-2. **Install dependencies**
+## Google OAuth2 Setup
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Create OAuth credentials in Google Cloud Console.
+2. Add redirect URI: `http://127.0.0.1:8000/accounts/google/login/callback/` for local development.
+3. Set env vars:
 
-3. **Run migrations**
+```env
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+```
 
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
+Allauth auto-registers new users and the app stores Google ID, email/name fields, and avatar URL on the linked profile.
 
-4. **Create a superuser** (for the admin panel)
+## Environment Variables
 
-   ```bash
-   python manage.py createsuperuser
-   ```
+Copy `.env.example` into your platform/environment manager and set:
 
-5. **Run the development server**
+```env
+DJANGO_SECRET_KEY=change-me
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME
+REDIS_URL=redis://HOST:6379/0
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
 
-   ```bash
-   python manage.py runserver
-   ```
+`REDIS_URL` is optional locally. In production, use Redis for WebSocket fan-out when running more than one process.
 
-6. Open your browser at **http://127.0.0.1:8000/**
-   The admin panel is at **http://127.0.0.1:8000/admin/**
+## Deployment
 
-## Notes
+### Render or Railway
 
-- All uploaded media (profile pictures, posts, stories) is stored under `media/`.
-  If no profile picture is uploaded, a default avatar (`media/defaults/default_avatar.png`)
-  is used automatically.
-- Stories automatically expire 24 hours after creation (`STORY_LIFETIME_HOURS` in
-  `config/settings.py`) — expired stories are filtered out everywhere by the
-  `Story.objects.active()` queryset manager and are never shown in the carousel or viewer.
-- Pagination sizes (`POSTS_PER_PAGE`, `FEED_PER_PAGE`) can be tuned in `config/settings.py`.
-- This project uses **SQLite** for zero-config local development. To use PostgreSQL/MySQL in
-  production, update the `DATABASES` setting in `config/settings.py`.
-- `DEBUG` and `SECRET_KEY` are read from environment variables in production
-  (`DJANGO_DEBUG`, `DJANGO_SECRET_KEY`) and fall back to safe local-dev defaults otherwise.
-  **Do not deploy with the default `SECRET_KEY`.**
+- Build command: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+- Start command: `daphne -b 0.0.0.0 -p $PORT config.asgi:application`
+- Add PostgreSQL and Redis services.
+- Set all env vars from `.env.example`.
 
-## Key Design Decisions
+### Ubuntu/VPS/aaPanel
 
-- **Class-Based Views** are used for all standard CRUD/listing operations (`ListView`,
-  `DetailView`, `CreateView`, `UpdateView`, `DeleteView`). Lightweight single-purpose
-  actions (like-toggle, follow-toggle, AJAX search) are implemented as small
-  `@login_required` function views for simplicity and clarity.
-- **Signals** (`core/signals.py`) automatically create a `Profile` whenever a `User`
-  registers, and automatically create `Notification` records when a `Follow`, `Like`,
-  or `Comment` is created.
-- **Ownership checks** use `UserPassesTestMixin` (class-based) for post edit/delete, and
-  manual checks in function views for comments/stories.
-- **Duplicate prevention** is enforced at the database layer with `UniqueConstraint`
-  on `Like(user, post)` and `Follow(follower, following)`, in addition to using
-  `get_or_create` in the view logic.
-- **Query optimization** — `select_related` is used for one-to-one/many-to-one
-  relationships (e.g. `post.user`, `post.user.profile`) and `prefetch_related` /
-  `annotate` with `Count`/`Exists` subqueries are used for reverse relations
-  (likes, comments) to minimize N+1 queries on the feed, explore, and profile pages.
+```bash
+git clone <repo>
+cd instagram_clone
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py collectstatic --noinput
+python manage.py migrate
+daphne -b 0.0.0.0 -p 8000 config.asgi:application
+```
+
+Put Nginx in front for HTTPS, static files, media files, and WebSocket proxying. Proxy `/ws/` with HTTP/1.1 upgrade headers.
+
+## Database Schema
+
+Core relationships:
+
+- User 1-1 Profile
+- User 1-1 UserStatus
+- User 1-N Post, Comment, Like, Follow, Story, Message, Notification
+- Post 1-N Comment, Like, Notification
+- Story 1-N StoryView and Notification
+- Conversation M-N User through participants
+- Conversation 1-N Message
+- Notification optionally points to Post, Story, Message, or Conversation
+- RecentSearch connects a searching user to a searched user
+
+Important constraints and indexes:
+
+- Unique like per user/post
+- Unique follow per follower/following with self-follow check
+- Unique story view per story/viewer
+- Unique recent search per user/searched user
+- Indexed feeds, comments, follows, notifications, story expiry, messages, and presence fields
+
+## Real-Time Architecture
+
+Channels routes:
+
+- `/ws/notifications/` pushes notification payloads to the authenticated user
+- `/ws/chat/<conversation_id>/` handles text messages, typing, and read receipts
+- `/ws/presence/` updates online/offline state
+
+Image messages use normal multipart POST upload for file safety; text messages use WebSockets.
+
+## Security Notes
+
+- CSRF middleware remains enabled for all forms
+- Auth and authorization checks protect owner-only and participant-only routes
+- Upload forms validate size and MIME type
+- Rate limiting wraps high-volume like/comment/follow endpoints
+- Production cookies, HSTS, X-Frame-Options, content-type sniffing protection, and proxy SSL settings are enabled when `DJANGO_DEBUG=False`

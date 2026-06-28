@@ -9,8 +9,8 @@
             <div class="list-group notification-list">
                 {% for notification in notifications %}
                 <div class="list-group-item d-flex align-items-center justify-content-between {% if not notification.is_read %}unread-notification{% endif %}">
-                    <a href="{% url 'profile_detail' username=notification.sender.username %}" class="d-flex align-items-center text-reset text-decoration-none flex-grow-1">
-                        <img src="{{ notification.sender.profile.profile_picture.url }}" class="post-avatar" alt="{{ notification.sender.username }}">
+                    <a href="{{ notification.get_absolute_url }}" class="d-flex align-items-center text-reset text-decoration-none flex-grow-1">
+                        <img src="{{ notification.sender.profile.avatar_url }}" class="post-avatar" alt="{{ notification.sender.username }}">
                         <div class="ms-2">
                             <span class="fw-semibold">{{ notification.sender.username }}</span>
                             {{ notification.get_text }}
@@ -23,6 +23,10 @@
                             <img src="{{ notification.post.image.url }}" class="notif-thumb" alt="Post">
                         </a>
                         {% endif %}
+                    {% elif notification.notification_type == 'message' %}
+                        <i class="fa-regular fa-paper-plane text-primary"></i>
+                    {% elif notification.notification_type == 'story_view' %}
+                        <i class="fa-regular fa-eye text-primary"></i>
                     {% else %}
                         <i class="fa-solid fa-user-plus text-primary"></i>
                     {% endif %}
