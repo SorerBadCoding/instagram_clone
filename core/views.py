@@ -48,6 +48,13 @@ from .models import (
 )
 
 
+def health_check(request):
+    """Simple health check endpoint used by load balancers and platform health checks."""
+    from django.http import JsonResponse
+
+    return JsonResponse({"status": "ok"})
+
+
 class RegisterView(CreateView):
     model = User
     form_class = UserRegisterForm

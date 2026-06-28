@@ -1,6 +1,7 @@
 """Django settings for the Instagram Clone project."""
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -8,17 +9,22 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-change-this-key-before-deploying-to-production-1234567890",
-)
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+# SECURITY: read secret key from env. In production set DJANGO_SECRET_KEY.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+
+if not DEBUG and not SECRET_KEY:
+    raise RuntimeError("DJANGO_SECRET_KEY environment variable must be set when DEBUG=False")
+
+if not SECRET_KEY:
+    # Provide a sensible default for local development/tests
+    SECRET_KEY = "django-insecure-change-this-key-before-deploying-to-production-1234567890"
 
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get(
         "DJANGO_ALLOWED_HOSTS",
-        "127.0.0.1,localhost,instaclone.xyz,www.instaclone.xyz,instagram-clone-1-jrwu.onrender.com",
+        "127.0.0.1,localhost,instaclone.xyz,www.instaclone.xyz",
     ).split(",")
     if host.strip()
 ]
@@ -164,8 +170,18 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-MEDIA_URL = "/media/"
+MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Optional S3 media storage when USE_S3=true and AWS credentials provided
+USE_S3 = os.environ.get("USE_S3", "False") == "True"
+if USE_S3:
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", None)
+    AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", None)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -176,7 +192,19 @@ STORY_LIFETIME_HOURS = int(os.environ.get("STORY_LIFETIME_HOURS", "24"))
 FILE_UPLOAD_MAX_MEMORY_SIZE = int(os.environ.get("FILE_UPLOAD_MAX_MEMORY_SIZE", str(5 * 1024 * 1024)))
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.environ.get("DATA_UPLOAD_MAX_MEMORY_SIZE", str(5 * 1024 * 1024)))
 
+# Security settings for production
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if not DEBUG else None
+
+# Read more secure settings from environment or default to safe values when DEBUG=False
+SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "True") == "True" if not DEBUG else False
+SESSION_COOKIE_SECURE = os.environ.get("DJANGO_SESSION_COOKIE_SECURE", "True") == "True" if not DEBUG else False
+CSRF_COOKIE_SECURE = os.environ.get("DJANGO_CSRF_COOKIE_SECURE", "True") == "True" if not DEBUG else False
+SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "31536000")) if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", "True") == "True" if not DEBUG else False
+SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_SECURE_HSTS_PRELOAD", "True") == "True" if not DEBUG else False
+
+# CSRF trusted origins: include ALLOWED_HOSTS with https scheme
+CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in os.environ.get("DJANGO_ALLOWED_HOSTS", ",".join(ALLOWED_HOSTS)).split(",") if h]
 USE_X_FORWARDED_HOST = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
