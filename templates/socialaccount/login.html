@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block guest_content %}
+    {% if process == "connect" %}
+        <div class="auth-page">
+            <div class="auth-card card shadow-sm mx-auto" style="max-width:420px;">
+                <div class="card-body p-4 text-center">
+                    <h1 class="h3 mb-3">{% blocktrans with provider.name as provider %}Connect {{ provider }}{% endblocktrans %}</h1>
+                    <p class="mb-4">{% blocktrans with provider.name as provider %}You are about to connect a new third-party account from {{ provider }}.{% endblocktrans %}</p>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary w-100">{% trans "Continue" %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="auth-page">
+            <div class="auth-card card shadow-sm mx-auto" style="max-width:420px;">
+                <div class="card-body p-4 text-center">
+                    <h1 class="h3 mb-3">{% blocktrans with provider.name as provider %}Sign In Via {{ provider }}{% endblocktrans %}</h1>
+                    <p class="mb-4">{% blocktrans with provider.name as provider %}You are about to sign in using a third-party account from {{ provider }}.{% endblocktrans %}</p>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger w-100">{% trans "Continue" %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock guest_content %}

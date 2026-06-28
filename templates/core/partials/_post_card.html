@@ -1,5 +1,6 @@
 {% load static %}
 {% load core_extras %}
+{% if post %}
 <article class="post-card card mb-4" id="post-{{ post.pk }}">
     <div class="card-header d-flex align-items-center justify-content-between bg-transparent border-0 pb-0">
         <a href="{% url 'profile_detail' username=post.user.username %}" class="d-flex align-items-center text-reset text-decoration-none">
@@ -67,3 +68,4 @@
         <button type="submit" class="btn btn-link fw-semibold ig-link-btn">Post</button>
     </form>
 </article>
+{% endif %}
