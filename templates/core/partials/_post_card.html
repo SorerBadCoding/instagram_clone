@@ -4,7 +4,7 @@
 <article class="post-card card mb-4" id="post-{{ post.pk }}">
     <div class="card-header d-flex align-items-center justify-content-between bg-transparent border-0 pb-0">
         <a href="{% url 'profile_detail' username=post.user.username %}" class="d-flex align-items-center text-reset text-decoration-none">
-            <img src="{{ post.user.profile.profile_picture.url }}" class="post-avatar" alt="{{ post.user.username }}">
+            <img src="{{ post.user.profile.avatar_url }}" class="post-avatar" alt="{{ post.user.username }}">
             <div class="ms-2">
                 <div class="fw-semibold">{{ post.user.username }}</div>
                 {% if post.location %}<div class="text-muted small">{{ post.location }}</div>{% endif %}

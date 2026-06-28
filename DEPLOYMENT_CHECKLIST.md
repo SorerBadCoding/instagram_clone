@@ -49,7 +49,8 @@ Before deploying to Railway, complete these steps:
 - Ensure `SESSION_COOKIE_SECURE=True` and `CSRF_COOKIE_SECURE=True`.
 
 10. Media (recommended)
-- Use S3 for media. Set `USE_S3=True` and AWS env vars.
+- Use Cloudinary for Railway production. Set `USE_CLOUDINARY=True` and provide `CLOUDINARY_URL`.
+- Or use S3 by setting `USE_S3=True` and AWS env vars.
 
 11. Monitoring
 - Configure logging/monitoring and add alerts for errors.

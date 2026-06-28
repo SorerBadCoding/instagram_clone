@@ -21,6 +21,7 @@ Steps
    - `REDIS_URL` — provided by the Redis addon if you enable Channels.
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for Google OAuth.
    - `DJANGO_SITE_ID=1`
+   - `USE_CLOUDINARY=True` and `CLOUDINARY_URL` for remote media storage, or `USE_S3=True` with AWS credentials if you prefer S3.
 4. Add a Postgres addon (Railway) and copy `DATABASE_URL` into env.
 5. (Optional) Add a Redis addon and copy `REDIS_URL` into env.
 6. Deploy — Railway will install `requirements.txt` and run build.

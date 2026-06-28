@@ -11,7 +11,7 @@
             {% endfor %}
         </div>
         <div class="story-header">
-            <img src="{{ story_user.profile.profile_picture.url }}" alt="{{ story_user.username }}">
+            <img src="{{ story_user.profile.avatar_url }}" alt="{{ story_user.username }}">
             <span class="fw-semibold">{{ story_user.username }}</span>
             <span class="story-time text-light small" id="storyTime"></span>
             {% if story_user == request.user %}

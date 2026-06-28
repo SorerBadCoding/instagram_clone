@@ -5,7 +5,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-9">
             <div class="profile-header d-flex flex-column flex-sm-row align-items-center align-items-sm-start gap-4 py-4">
-                <img src="{{ profile.profile_picture.url }}" class="profile-avatar" alt="{{ profile.user.username }}">
+                <img src="{{ profile.avatar_url }}" class="profile-avatar" alt="{{ profile.user.username }}">
                 <div class="flex-grow-1 w-100">
                     <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
                         <h4 class="mb-0">{{ profile.user.username }}</h4>
@@ -50,7 +50,7 @@
             <div class="mb-3">
                 <a href="{% url 'story_viewer' username=profile.user.username %}" class="story-circle">
                     <span class="story-ring">
-                        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }}">
+                        <img src="{{ profile.avatar_url }}" alt="{{ profile.user.username }}">
                     </span>
                     <span class="story-username">Active story</span>
                 </a>

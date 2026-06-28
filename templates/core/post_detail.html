@@ -13,7 +13,7 @@
                     <div class="col-md-5 d-flex flex-column post-detail-side">
                         <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
                             <a href="{% url 'profile_detail' username=post.user.username %}" class="d-flex align-items-center text-reset text-decoration-none">
-                                <img src="{{ post.user.profile.profile_picture.url }}" class="post-avatar" alt="{{ post.user.username }}">
+                                <img src="{{ post.user.profile.avatar_url }}" class="post-avatar" alt="{{ post.user.username }}">
                                 <span class="fw-semibold ms-2">{{ post.user.username }}</span>
                             </a>
                             {% if post.user == request.user %}
@@ -32,7 +32,7 @@
                         <div class="comments-scroll p-3 flex-grow-1" id="comments">
                             {% if post.caption %}
                             <div class="d-flex mb-3">
-                                <img src="{{ post.user.profile.profile_picture.url }}" class="post-avatar" alt="{{ post.user.username }}">
+                                <img src="{{ post.user.profile.avatar_url }}" class="post-avatar" alt="{{ post.user.username }}">
                                 <div class="ms-2">
                                     <a href="{% url 'profile_detail' username=post.user.username %}" class="fw-semibold text-reset text-decoration-none">{{ post.user.username }}</a>
                                     {{ post.caption }}
@@ -42,7 +42,7 @@
                             {% endif %}
                             {% for comment in comments %}
                             <div class="d-flex mb-3">
-                                <img src="{{ comment.user.profile.profile_picture.url }}" class="post-avatar" alt="{{ comment.user.username }}">
+                                <img src="{{ comment.user.profile.avatar_url }}" class="post-avatar" alt="{{ comment.user.username }}">
                                 <div class="ms-2 flex-grow-1">
                                     <a href="{% url 'profile_detail' username=comment.user.username %}" class="fw-semibold text-reset text-decoration-none">{{ comment.user.username }}</a>
                                     {{ comment.content }}

@@ -58,7 +58,7 @@
             </a>
             <a class="nav-link {% if request.resolver_match.url_name == 'profile_detail' and request.resolver_match.kwargs.username == user.username %}active{% endif %}" href="{% url 'profile_detail' username=user.username %}">
                 <span class="nav-avatar">
-                    <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}">
+                    <img src="{{ user.profile.avatar_url }}" alt="{{ user.username }}">
                 </span>
                 <span>Profile</span>
             </a>
@@ -119,7 +119,7 @@
         <a href="{% url 'post_create' %}"><i class="fa-regular fa-square-plus"></i></a>
         <a href="{% url 'inbox' %}" class="{% if request.resolver_match.url_name == 'inbox' or request.resolver_match.url_name == 'conversation_detail' %}active{% endif %}"><i class="fa-regular fa-paper-plane"></i></a>
         <a href="{% url 'search' %}"><i class="fa-solid fa-magnifying-glass"></i></a>
-        <a href="{% url 'profile_detail' username=user.username %}"><img src="{{ user.profile.profile_picture.url }}" class="bottom-nav-avatar" alt="{{ user.username }}"></a>
+        <a href="{% url 'profile_detail' username=user.username %}"><img src="{{ user.profile.avatar_url }}" class="bottom-nav-avatar" alt="{{ user.username }}"></a>
     </nav>
 </div>
 {% else %}

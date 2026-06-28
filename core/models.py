@@ -48,9 +48,13 @@ class Profile(models.Model):
 
     @property
     def avatar_url(self):
-        if self.profile_picture:
+        default_picture_names = {"", "defaults/default_avatar.png"}
+        picture_name = getattr(self.profile_picture, "name", "")
+        if self.profile_picture and picture_name not in default_picture_names:
             return self.profile_picture.url
-        return self.oauth_avatar_url or settings.MEDIA_URL + "defaults/default_avatar.png"
+        if self.oauth_avatar_url:
+            return self.oauth_avatar_url
+        return settings.STATIC_URL + "img/default_avatar.svg"
 
     @property
     def followers_count(self):

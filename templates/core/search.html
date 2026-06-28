@@ -16,7 +16,7 @@
                 <div class="list-group">
                     {% for profile in profiles %}
                     <a href="{% url 'profile_detail' username=profile.user.username %}" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <img src="{{ profile.profile_picture.url }}" class="post-avatar" alt="{{ profile.user.username }}">
+                        <img src="{{ profile.avatar_url }}" class="post-avatar" alt="{{ profile.user.username }}">
                         <div class="ms-2">
                             <div class="fw-semibold">{{ profile.user.username }}</div>
                             {% if profile.bio %}<div class="text-muted small">{{ profile.bio|truncate_chars:60 }}</div>{% endif %}

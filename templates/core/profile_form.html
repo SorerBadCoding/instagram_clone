@@ -8,7 +8,7 @@
                 <div class="card-header bg-transparent fw-semibold text-center">Edit profile</div>
                 <div class="card-body">
                     <div class="text-center mb-4">
-                        <img src="{{ object.profile_picture.url }}" class="profile-avatar-edit" alt="{{ request.user.username }}">
+                        <img src="{{ object.avatar_url }}" class="profile-avatar-edit" alt="{{ request.user.username }}">
                         <div class="fw-semibold mt-2">{{ request.user.username }}</div>
                     </div>
                     <form method="post" enctype="multipart/form-data" novalidate>

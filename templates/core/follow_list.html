@@ -14,7 +14,7 @@
                 {% for person in people %}
                 <div class="list-group-item d-flex align-items-center justify-content-between">
                     <a href="{% url 'profile_detail' username=person.username %}" class="d-flex align-items-center text-reset text-decoration-none">
-                        <img src="{{ person.profile.profile_picture.url }}" class="post-avatar" alt="{{ person.username }}">
+                        <img src="{{ person.profile.avatar_url }}" class="post-avatar" alt="{{ person.username }}">
                         <span class="fw-semibold ms-2">{{ person.username }}</span>
                     </a>
                     {% if person != request.user %}

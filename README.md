@@ -45,6 +45,13 @@ GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
+Optional Cloudinary storage for Railway production:
+
+```env
+USE_CLOUDINARY=True
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+```
+
 Allauth auto-registers new users and the app stores Google ID, email/name fields, and avatar URL on the linked profile.
 
 ## Environment Variables
