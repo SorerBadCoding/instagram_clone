@@ -176,7 +176,6 @@ STORAGES = {
 
 MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
 MEDIA_ROOT = BASE_DIR / "media"
-DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
 USE_CLOUDINARY = os.environ.get("USE_CLOUDINARY", "False") == "True"
 CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL", "")
@@ -193,14 +192,16 @@ if USE_CLOUDINARY and USE_S3:
 if USE_CLOUDINARY:
     if not CLOUDINARY_URL and not all(CLOUDINARY_STORAGE.values()):
         raise RuntimeError("USE_CLOUDINARY=True requires CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET.")
-    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+    STORAGES["default"]["BACKEND"] = "cloudinary_storage.storage.MediaCloudinaryStorage"
 elif USE_S3:
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STORAGES["default"]["BACKEND"] = "storages.backends.s3boto3.S3Boto3Storage"
     AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
     AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", None)
     AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", None)
+
+DEFAULT_FILE_STORAGE = STORAGES["default"]["BACKEND"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
