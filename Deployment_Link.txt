@@ -1,0 +1,18 @@
+Project: InstaClone
+
+Deployment URL:
+https://web-production-beaf7.up.railway.app/
+
+Team Members:
+
+* Sar Er
+* Sarouen Panhasa
+* Heng Savin
+
+Test Account:
+
+Username: [your test username]
+Password: [your test password]
+
+Notes:
+This account is provided for testing the application features.

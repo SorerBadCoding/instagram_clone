@@ -1,19 +1,43 @@
 ﻿# InstaClone - Production Django Social App
 
-A Django Instagram-style social platform with the existing Bootstrap UI preserved and a restored production-ready backend.
+## Project Description
+
+InstaClone is a Django-based social media web application inspired by Instagram. The platform allows users to create accounts, manage profiles, upload posts, interact through likes and comments, follow other users, share stories, exchange direct messages, and receive real-time notifications. The application demonstrates modern web development practices using Django, Channels, WebSockets, and cloud deployment technologies.
+
+## Technologies Used
+
+* Python
+* Django 6
+* Django Channels
+* Daphne
+* SQLite (Development)
+* PostgreSQL (Production)
+* Redis
+* Bootstrap 5
+* HTML5
+* CSS3
+* JavaScript
+* Cloudinary
+* WhiteNoise
+* Railway Deployment Platform
 
 ## Features
 
-- Django auth plus Google OAuth2 with django-allauth
-- Automatic profile/status creation for every user
-- Posts, likes, comments, follows, profile stats, followers/following lists
-- 24-hour image/video stories with privacy, viewer tracking, and owner analytics
-- Real-time notifications for follows, likes, comments, messages, and story views
-- Direct messages with one-to-one conversations, WebSockets, typing indicators, read receipts, image upload fallback, timestamps, and older-message endpoint
-- User search by username, name, and bio with AJAX suggestions, recent searches, and suggested users
-- Online/offline presence through Django Channels
-- SQLite locally, PostgreSQL through DATABASE_URL in production
-- Daphne ASGI, WhiteNoise static files, secure production settings, and deployment-ready environment variables
+* Django authentication system
+* Google OAuth2 login with django-allauth
+* User profiles and profile statistics
+* Create, edit, and manage posts
+* Like and comment system
+* Follow and unfollow users
+* User search with suggestions
+* 24-hour image and video stories
+* Story viewer tracking and analytics
+* Real-time notifications
+* Direct messaging system
+* Typing indicators and read receipts
+* Online/offline user presence
+* Responsive Bootstrap user interface
+* Secure production deployment
 
 ## Local Setup
 
@@ -25,112 +49,111 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000/.
+Open:
 
-The existing migration seeds a local superuser:
+http://127.0.0.1:8000/
 
-```text
-username: potling
-password: Potling123!
-```
+## How to Run the Project
 
-## Google OAuth2 Setup
+1. Clone or download the project.
+2. Create and activate a Python virtual environment.
+3. Install all required dependencies using requirements.txt.
+4. Apply database migrations.
+5. Run the Django development server.
+6. Access the application through a web browser.
 
-1. Create OAuth credentials in Google Cloud Console.
-2. Add redirect URI: `http://127.0.0.1:8000/accounts/google/login/callback/` for local development.
-3. Set env vars:
+## Deployment Link
 
-```env
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-```
+Production URL:
 
-Optional Cloudinary storage for Railway production:
+https://web-production-beaf7.up.railway.app/
 
-```env
-USE_CLOUDINARY=True
-CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
-```
+## Team Member Contributions
 
-Allauth auto-registers new users and the app stores Google ID, email/name fields, and avatar URL on the linked profile.
+### Sar Er
 
-## Environment Variables
+* Project planning and system architecture design
+* Django backend development
+* Database design and implementation
+* User authentication and profile management
+* Post, Like, Comment, and Follow systems
+* Story feature implementation
+* Direct Messaging system
+* Real-time notifications using Django Channels
+* Deployment and server configuration on Railway
+* Testing, debugging, and project integration
+* Documentation and presentation preparation
 
-Copy `.env.example` into your platform/environment manager and set:
+### Sarouen Panhasa
 
-```env
-DJANGO_SECRET_KEY=change-me
-DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=your-domain.com,www.your-domain.com
-DJANGO_CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME
-REDIS_URL=redis://HOST:6379/0
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-```
+* System testing and quality assurance
+* Feature validation and user experience feedback
+* Documentation review
+* Presentation preparation support
 
-`REDIS_URL` is optional locally. In production, use Redis for WebSocket fan-out when running more than one process.
+### Heng Savin
 
-## Deployment
-
-### Render or Railway
-
-- Build command: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
-- Start command: `daphne -b 0.0.0.0 -p $PORT config.asgi:application`
-- Add PostgreSQL and Redis services.
-- Set all env vars from `.env.example`.
-
-### Ubuntu/VPS/aaPanel
-
-```bash
-git clone <repo>
-cd instagram_clone
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python manage.py collectstatic --noinput
-python manage.py migrate
-daphne -b 0.0.0.0 -p 8000 config.asgi:application
-```
-
-Put Nginx in front for HTTPS, static files, media files, and WebSocket proxying. Proxy `/ws/` with HTTP/1.1 upgrade headers.
+* User interface testing
+* Demonstration preparation
+* Project review and evaluation
+* Presentation support
 
 ## Database Schema
 
 Core relationships:
 
-- User 1-1 Profile
-- User 1-1 UserStatus
-- User 1-N Post, Comment, Like, Follow, Story, Message, Notification
-- Post 1-N Comment, Like, Notification
-- Story 1-N StoryView and Notification
-- Conversation M-N User through participants
-- Conversation 1-N Message
-- Notification optionally points to Post, Story, Message, or Conversation
-- RecentSearch connects a searching user to a searched user
-
-Important constraints and indexes:
-
-- Unique like per user/post
-- Unique follow per follower/following with self-follow check
-- Unique story view per story/viewer
-- Unique recent search per user/searched user
-- Indexed feeds, comments, follows, notifications, story expiry, messages, and presence fields
+* User → Profile (One-to-One)
+* User → UserStatus (One-to-One)
+* User → Posts, Comments, Likes, Follows, Stories, Messages, Notifications (One-to-Many)
+* Post → Comments and Likes
+* Story → Story Views
+* Conversation → Messages
+* Notification → Related Posts, Stories, Messages, and Conversations
 
 ## Real-Time Architecture
 
-Channels routes:
+The application uses Django Channels and WebSockets to provide:
 
-- `/ws/notifications/` pushes notification payloads to the authenticated user
-- `/ws/chat/<conversation_id>/` handles text messages, typing, and read receipts
-- `/ws/presence/` updates online/offline state
+* Real-time notifications
+* Live messaging
+* Typing indicators
+* Read receipts
+* User online/offline status
 
-Image messages use normal multipart POST upload for file safety; text messages use WebSockets.
+WebSocket routes:
 
-## Security Notes
+* `/ws/notifications/`
+* `/ws/chat/<conversation_id>/`
+* `/ws/presence/`
 
-- CSRF middleware remains enabled for all forms
-- Auth and authorization checks protect owner-only and participant-only routes
-- Upload forms validate size and MIME type
-- Rate limiting wraps high-volume like/comment/follow endpoints
-- Production cookies, HSTS, X-Frame-Options, content-type sniffing protection, and proxy SSL settings are enabled when `DJANGO_DEBUG=False`
+## Challenges Faced
+
+* Implementing real-time communication using Django Channels
+* Managing WebSocket connections and user presence
+* Deploying Django with Daphne on Railway
+* Configuring Redis for scalable messaging
+* Managing media uploads and cloud storage
+* Debugging production deployment issues
+
+## Lessons Learned
+
+* Django project architecture and best practices
+* Database relationship design
+* Real-time communication with WebSockets
+* Cloud deployment and server configuration
+* User authentication and security implementation
+* Full-stack web application development
+
+## Security Features
+
+* CSRF protection enabled
+* Authentication and authorization controls
+* Rate limiting for sensitive endpoints
+* Secure cookie settings
+* HSTS and HTTPS support
+* File upload validation
+* Production security headers
+
+## Conclusion
+
+InstaClone successfully demonstrates the development of a modern social media platform using Django and related technologies. The project integrates authentication, social interactions, real-time communication, and cloud deployment to provide a complete full-stack web application experience.
