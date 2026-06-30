@@ -1,89 +1,133 @@
 {% extends "base.html" %}
 {% block title %}{{ profile.user.username }} • InstaClone{% endblock %}
 {% block content %}
-<div class="container">
+<div class="container py-3 py-md-4">
     <div class="row justify-content-center">
         <div class="col-lg-9">
-            <div class="profile-header d-flex flex-column flex-sm-row align-items-center align-items-sm-start gap-4 py-4">
-                <img src="{{ profile.avatar_url }}" class="profile-avatar" alt="{{ profile.user.username }}">
-                <div class="flex-grow-1 w-100">
-                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
-                        <h4 class="mb-0">{{ profile.user.username }}</h4>
-                        {% if is_online %}
-                            <span class="badge rounded-pill bg-success">Online</span>
-                        {% endif %}
-                        {% if is_own_profile %}
-                            <a href="{% url 'profile_edit' %}" class="btn btn-outline-secondary btn-sm">Edit profile</a>
-                        {% else %}
-                            <form action="{% url 'follow_toggle' username=profile.user.username %}" method="post" id="follow-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.path }}">
-                                <button type="submit" class="btn btn-sm follow-btn {% if is_following %}btn-outline-secondary{% else %}btn-primary ig-btn{% endif %}" data-username="{{ profile.user.username }}">
-                                    {% if is_following %}Following{% else %}Follow{% endif %}
-                                </button>
-                            </form>
+            <section class="profile-shell" aria-label="Profile overview">
+                <div class="profile-hero">
+                    <div class="profile-avatar-wrap">
+                        <div class="profile-avatar-ring">
+                            <img src="{{ profile.avatar_url }}" class="profile-avatar" alt="{{ profile.user.username }}">
+                        </div>
+                        {% if active_stories %}
+                        <a href="{% url 'story_viewer' username=profile.user.username %}" class="profile-story-pill" aria-label="View active story">
+                            <span class="story-ring story-ring--compact">
+                                <img src="{{ profile.avatar_url }}" alt="{{ profile.user.username }}">
+                            </span>
+                            <span class="profile-story-label">Active story</span>
+                        </a>
                         {% endif %}
                     </div>
-                    <div class="d-flex gap-4 mb-3 profile-stats">
-                        <span><strong>{{ profile.posts_count }}</strong> posts</span>
-                        <a href="{% url 'follow_list' username=profile.user.username mode='followers' %}" class="text-reset text-decoration-none"><strong>{{ profile.followers_count }}</strong> followers</a>
-                        <a href="{% url 'follow_list' username=profile.user.username mode='following' %}" class="text-reset text-decoration-none"><strong>{{ profile.following_count }}</strong> following</a>
+
+                    <div class="profile-main">
+                        <div class="profile-headline">
+                            <div class="profile-name-group">
+                                <h1 class="profile-username">{{ profile.user.username }}</h1>
+                                {% if is_online %}
+                                    <span class="profile-badge">Online</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="profile-actions">
+                                {% if is_own_profile %}
+                                    <a href="{% url 'profile_edit' %}" class="btn profile-action-btn profile-action-btn--secondary">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                        <span>Edit profile</span>
+                                    </a>
+                                {% else %}
+                                    <form action="{% url 'follow_toggle' username=profile.user.username %}" method="post" id="follow-form" class="profile-follow-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.path }}">
+                                        <button type="submit" class="btn profile-action-btn {% if is_following %}btn-outline-secondary{% else %}btn-primary ig-btn{% endif %}" data-username="{{ profile.user.username }}">
+                                            <i class="fa-solid {% if is_following %}fa-user-check{% else %}fa-user-plus{% endif %}"></i>
+                                            <span>{% if is_following %}Following{% else %}Follow{% endif %}</span>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="profile-stats">
+                            <div class="profile-stat-card">
+                                <strong>{{ profile.posts_count }}</strong>
+                                <span>posts</span>
+                            </div>
+                            <a href="{% url 'follow_list' username=profile.user.username mode='followers' %}" class="profile-stat-card profile-stat-card--link">
+                                <strong>{{ profile.followers_count }}</strong>
+                                <span>followers</span>
+                            </a>
+                            <a href="{% url 'follow_list' username=profile.user.username mode='following' %}" class="profile-stat-card profile-stat-card--link">
+                                <strong>{{ profile.following_count }}</strong>
+                                <span>following</span>
+                            </a>
+                        </div>
+
+                        <div class="profile-identity">
+                            {% if profile.user.first_name or profile.user.last_name %}
+                            <div class="profile-fullname">{{ profile.user.first_name }} {{ profile.user.last_name }}</div>
+                            {% endif %}
+
+                            {% if profile.bio %}
+                            <div class="profile-bio-card">
+                                <div class="profile-bio">{{ profile.bio|linebreaksbr }}</div>
+                            </div>
+                            {% endif %}
+
+                            <div class="profile-meta">
+                                {% if profile.website %}<a href="{{ profile.website }}" target="_blank" rel="noopener noreferrer" class="profile-link"><i class="fa-solid fa-link"></i> {{ profile.website }}</a>{% endif %}
+                                {% if profile.location %}<div class="profile-location"><i class="fa-solid fa-location-dot"></i> {{ profile.location }}</div>{% endif %}
+                            </div>
+
+                            {% if mutual_followers %}
+                            <div class="profile-mutual">
+                                <span>Followed by</span>
+                                {% for person in mutual_followers %}
+                                    <a href="{% url 'profile_detail' username=person.username %}" class="text-reset fw-semibold">{{ person.username }}</a>{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% if profile.user.first_name or profile.user.last_name %}
-                    <div class="fw-semibold">{{ profile.user.first_name }} {{ profile.user.last_name }}</div>
-                    {% endif %}
-                    {% if profile.bio %}<div class="profile-bio">{{ profile.bio|linebreaksbr }}</div>{% endif %}
-                    {% if profile.website %}<a href="{{ profile.website }}" target="_blank" rel="noopener noreferrer" class="profile-link"><i class="fa-solid fa-link"></i> {{ profile.website }}</a>{% endif %}
-                    {% if profile.location %}<div class="text-muted small mt-1"><i class="fa-solid fa-location-dot"></i> {{ profile.location }}</div>{% endif %}
-                    {% if mutual_followers %}
-                    <div class="text-muted small mt-2">
-                        Followed by
-                        {% for person in mutual_followers %}
-                            <a href="{% url 'profile_detail' username=person.username %}" class="text-reset fw-semibold">{{ person.username }}</a>{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </div>
-                    {% endif %}
                 </div>
-            </div>
+            </section>
 
-            {% if active_stories %}
-            <div class="mb-3">
-                <a href="{% url 'story_viewer' username=profile.user.username %}" class="story-circle">
-                    <span class="story-ring">
-                        <img src="{{ profile.avatar_url }}" alt="{{ profile.user.username }}">
-                    </span>
-                    <span class="story-username">Active story</span>
-                </a>
-            </div>
-            {% endif %}
+            <section class="profile-posts-shell" aria-label="Posts">
+                <div class="profile-section-heading">
+                    <div>
+                        <p class="profile-section-eyebrow">Library</p>
+                        <h2 class="profile-section-title">Posts</h2>
+                    </div>
+                    <div class="profile-section-count">{{ profile.posts_count }} items</div>
+                </div>
 
-            <hr>
-
-            {% if posts %}
-            <div class="explore-grid">
-                {% for post in posts %}
-                    {% include "core/partials/_post_grid_item.html" %}
-                {% endfor %}
-            </div>
-            {% if posts.has_other_pages %}
-            <nav class="my-4">
-                <ul class="pagination justify-content-center">
-                    {% if posts.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ posts.previous_page_number }}">Previous</a></li>
-                    {% endif %}
-                    <li class="page-item disabled"><span class="page-link">Page {{ posts.number }} of {{ posts.paginator.num_pages }}</span></li>
-                    {% if posts.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ posts.next_page_number }}">Next</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
-            {% else %}
-            <div class="empty-state text-center py-5">
-                <i class="fa-solid fa-camera empty-icon"></i>
-                <h5 class="mt-3">No posts yet</h5>
-            </div>
-            {% endif %}
+                {% if posts %}
+                <div class="explore-grid">
+                    {% for post in posts %}
+                        {% include "core/partials/_post_grid_item.html" %}
+                    {% endfor %}
+                </div>
+                {% if posts.has_other_pages %}
+                <nav class="my-4">
+                    <ul class="pagination justify-content-center">
+                        {% if posts.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ posts.previous_page_number }}">Previous</a></li>
+                        {% endif %}
+                        <li class="page-item disabled"><span class="page-link">Page {{ posts.number }} of {{ posts.paginator.num_pages }}</span></li>
+                        {% if posts.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ posts.next_page_number }}">Next</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="empty-state profile-empty-state">
+                    <i class="fa-solid fa-camera empty-icon"></i>
+                    <h5 class="mt-3">No posts yet</h5>
+                    <p class="profile-empty-copy">Share your first moment to populate this gallery.</p>
+                </div>
+                {% endif %}
+            </section>
         </div>
     </div>
 </div>

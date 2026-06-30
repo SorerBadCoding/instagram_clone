@@ -1,5 +1,5 @@
 {% if post %}
-<a href="{% url 'post_detail' pk=post.pk %}" class="grid-item">
+<a href="{% url 'post_detail' pk=post.pk %}" class="grid-item" aria-label="Open post by {{ post.user.username }}">
     <img src="{{ post.image.url }}" alt="Post by {{ post.user.username }}">
     <div class="grid-item-overlay">
         <span><i class="fa-solid fa-heart"></i> {{ post.liked_count|default:post.likes_count }}</span>
